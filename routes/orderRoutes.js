@@ -1,14 +1,14 @@
 const express = require("express");
 const router = express.Router();
-const Order=require("../models/Order")
+const Order = require("../models/Order")
 
 const authMiddleware = require("../middleware/authMiddleware")
-const adminMiddleware =require("../middleware/adminMiddleware")
+const adminMiddleware = require("../middleware/adminMiddleware")
 
-router.post("/place",authMiddleware,async(req,res)=>{
-    try{
-        const {items,totalAmount,address}=req.body
-        const neworder=new Order({
+router.post("/place", authMiddleware, async (req, res) => {
+    try {
+        const { items, totalAmount, address } = req.body
+        const neworder = new Order({
             user: req.user.id,
             items,
             totalAmount,
@@ -16,119 +16,121 @@ router.post("/place",authMiddleware,async(req,res)=>{
         })
         await neworder.save()
         res.status(201).json({
-                message: "Order Placed Successfully"
-            })
-    }catch(err){
+            message: "Order Placed Successfully"
+        })
+    } catch (err) {
         console.log(err)
         res.status(500).json({
-                error: err.message
-            })
+            error: err.message
+        })
     }
 })
-router.get("/myorders",authMiddleware,async (req, res) => {
+router.get("/myorders", authMiddleware, async (req, res) => {
 
-        try{
+    try {
 
-            const orders = await Order.find({
+        const orders = await Order.find({
 
-                user: req.user.id
+            user: req.user.id
 
-            }).sort({ createdAt: -1 });
+        }).sort({ createdAt: -1 });
 
-            res.status(200).json(orders);
+        res.status(200).json(orders);
 
-        }catch(err){
+    } catch (err) {
 
-            console.log(err);
+        console.log(err);
 
-            res.status(500).json({
-                error: err.message
-            });
-
-        }
+        res.status(500).json({
+            error: err.message
+        });
 
     }
+
+}
 );
-router.get("/all",authMiddleware,adminMiddleware,async (req, res) => {
+router.get("/all", authMiddleware, adminMiddleware, async (req, res) => {
 
-        try{
+    try {
 
-            const orders =
+        const orders =
             await Order.find()
-            .sort({ createdAt: -1 });
+                .populate("user", "email name")
+                .sort({ createdAt: -1 });
 
-            res.status(200).json(orders);
+        res.status(200).json(orders);
 
-        }catch(err){
+    } catch (err) {
 
-            console.log(err);
+        console.log(err);
 
-            res.status(500).json({
-                error: err.message
-            });
-
-        }
+        res.status(500).json({
+            error: err.message
+        });
 
     }
+
+}
 );
-router.put("/status/:id",authMiddleware,adminMiddleware,async (req, res) => {
+router.put("/status/:id", authMiddleware, adminMiddleware, async (req, res) => {
 
-        try{
+    try {
 
-            const { status } = req.body;
+        const { status } = req.body;
 
-            await Order.findByIdAndUpdate(
+        await Order.findByIdAndUpdate(
 
-                req.params.id,
+            req.params.id,
 
-                { status }
+            { status },
+            { new: true }
 
-            );
+        ).populate("user", "email name");
 
-            res.status(200).json({
+        res.status(200).json({
 
-                message:
+            message:
                 "Order Status Updated"
 
-            });
+        });
 
-        }catch(err){
+    } catch (err) {
 
-            console.log(err);
+        console.log(err);
 
-            res.status(500).json({
-                error: err.message
-            });
-
-        }
+        res.status(500).json({
+            error: err.message
+        });
 
     }
-);
-router.delete("/cancel/:id", authMiddleware, async(req,res)=>{
 
-    try{
+}
+);
+router.delete("/cancel/:id", authMiddleware, async (req, res) => {
+
+    try {
 
         const order = await Order.findById(req.params.id);
 
-        if(!order){
+        if (!order) {
             return res.status(404).json({
-                message:"Order not found"
+                message: "Order not found"
             });
         }
 
-        if(order.status !== "Pending"){
+        if (order.status !== "Pending") {
             return res.status(400).json({
-                message:"Only pending orders can be cancelled"
+                message: "Only pending orders can be cancelled"
             });
         }
 
         await Order.findByIdAndDelete(req.params.id);
 
         res.status(200).json({
-            message:"Order Cancelled Successfully"
+            message: "Order Cancelled Successfully"
         });
 
-    }catch(err){
+    } catch (err) {
 
         res.status(500).json({
             error: err.message
